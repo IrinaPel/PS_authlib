@@ -1,3 +1,4 @@
+var loginAsRight = "loginAs";
 var allUsers = [
 	{nickname: "admin", password: "1234", groups: ["admin", "manager", "basic"]},
 	{nickname: "sobakajozhec", password: "ekh228", groups: ["basic", "manager"]},
@@ -106,8 +107,13 @@ function guidGenerator() {
 }
 
 //Создает новое право и возвращает его 
-function createRight() {
-	let newRight = guidGenerator();
+function createRight(rightName = false) {
+	let newRight;
+	if (rightName) {
+	    newRight = rightName;
+	} else {
+		newRight = guidGenerator();
+	}
 	allRights.push(newRight);
 	return newRight;
 };
@@ -159,20 +165,23 @@ function addRightToGroup(right, group) {
 function removeRightFromGroup(right, group) {
 	let index = allRights.indexOf(right);	
 	// let checkGroup = allGroups[group]; 
-	if (index > -1) { 
+	//if (index > -1) { 
 		let indexRight = allGroups[group].indexOf(right);
 		if (indexRight > -1) {
-			allGroups[group].splice(indexRight, 1);;
-		} else {
+			allGroups[group].splice(indexRight, 1);
+		}else {
 			throw new Error("error: right not existing");
-		}
-	} else {
-		throw new Error("error removeRightFromGroup: You are so fast 0_o RETRY NOW!!!!!");
+		
+	//} else {
+		
+		//throw new Error("error removeRightFromGroup: You are so fast 0_o RETRY NOW!!!!!");
 	} 
 };
 
 //Сессия пользователя
 var currentSessionUser = undefined;
+//переменная - логин за какого пользователя (за кого зашел админ)
+var currentLoginAs = undefined;
 
 //return -	true, если пользователь с логином username и паролем password существует, false в противном случае. 
 //Также функция login должна вернуть false в случае, если сессия пользователя уже существует.
@@ -195,12 +204,16 @@ function login(username, password) {
 
 //return	-	Возвращает текущего пользователя или undefined в случае, если текущий пользователь не прошел аутентифицацию
 function currentUser() {
-	return currentSessionUser;
+	return (currentLoginAs ? currentLoginAs : currentSessionUser);
 };
 
 // Вызов данной функции должен завершать сессию текущего пользователя
 function logout() {
-	currentSessionUser = undefined;
+	if (currentLoginAs){
+		currentLoginAs = undefined;
+	} else {
+		currentSessionUser = undefined;
+	}
 };
 
 //return - true в случае, если пользователь user обладает правом right, false в противном случае
@@ -208,7 +221,6 @@ function isAuthorized(user, right) {
 	if (!user || !right){
 		throw new Error('user or right not valid');
 	}
-
 
 	let userIndex = allUsers.indexOf(user);
 	let rightIndex = allRights.indexOf(right);
@@ -225,6 +237,63 @@ function isAuthorized(user, right) {
 	}
 };
 
+
+//Дополнительное задание 1. Гостевой вход
+var guestUser = {nickname: "guest", groups:["basic"]}
+function loginAsGuest(){
+	currentSessionUser = guestUser; 
+};
+
+//Дополнительное задание 2: Вход от имени другого пользователя
+function loginAs (user) {
+	if (isAuthorized(currentUser(), loginAsRight)) {
+		currentLoginAs = user;	
+	}
+}
+
+//Дополнительное задание 3: Конроль за действиями пользователя
+function securityWrapper (action, right) {
+	if (isAuthorized(currentUser(), right)) {
+		return action;
+	}
+}
+
+//Дополнительное задание 4: Статирование действий пользователя
+function addActionListener(listener) {}
+
+//init lib - штуки, чтобы работала библиоткета 
+
+createRight(loginAsRight);
+addRightToGroup(loginAsRight, "admin");
+
+
+
+
+//login tricks
+login('admin', '1234');
+console.log(currentUser());//admin
+loginAs({nickname: "sobakajozhec", password: "ekh228", groups: ["basic", "manager"]});
+console.log(currentUser());//sobakajozhec
+logout();
+console.log(currentUser());//admin
+logout();
+console.log(currentUser());//undefined
+
+//securityWrapper
+createRight("canUseCreateRight");
+addRightToGroup("canUseCreateRight", "admin");
+
+login('admin', '1234');
+securityWrapper(createRight, "canUseCreateRight")("new");
+logout();
+
+login('sobakajozhec', 'ekh228');
+if (securityWrapper(createRight, "canUseCreateRight")){
+	securityWrapper(createRight, "canUseCreateRight")("new2");
+}
+logout();
+
+console.log(allRights);
 
 
 
